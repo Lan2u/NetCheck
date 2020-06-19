@@ -1,0 +1,13 @@
+{
+    "self_name": "default",
+    "hosts": [
+        {
+            "name": "Google DNS",
+            "addr": "8.8.8.8"
+        },
+        {
+            "name": "CloudFlare DNS",
+            "addr": "1.1.1.1"
+        }
+    ]
+}
