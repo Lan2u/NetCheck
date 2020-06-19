@@ -3,6 +3,7 @@ import json
 from datetime import datetime
 from icmplib import ping, SocketPermissionError
 from error import ConnectionFailedError
+import threading
 
 PING_COUNT = 4
 
@@ -37,10 +38,8 @@ class Host:
         self.last_ping_timestamp = None
 
     def log_ping(self, ping):
-        if ping.is_alive and (ping.packet_loss < 1.0):
-            self.last_ping = ping
-            self.last_ping_timestamp = datetime.now()
-        # A ping that had 100% packet loss or the host was detected as alive isn't logged.
+        self.last_ping = ping
+        self.last_ping_timestamp = datetime.now()
 
     def elapsed_since_last_successful_contact(self):
         if self.last_ping_timestamp == None:
@@ -58,6 +57,7 @@ class NetConn:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock = sock
         self.hosts = {}
+        self.lock = threading.Lock()
     
     def _ping_host(self, host):
         try:
@@ -66,18 +66,18 @@ class NetConn:
         except SocketPermissionError:
             raise ConnectionFailedError("Failed to ping host")
             
-
     def send_ping(self, host_name):
         host = self.hosts[host_name]
         self._ping_host(host)
 
     def ping_all(self):
+        self.lock.acquire()
         for host in self.hosts.values():
             try:
                 self._ping_host(host)
             except ConnectionFailedError as e:
                 raise e
-
+        self.lock.release()
 
     def register_host(self, host):
         self.hosts[host.host_name] = host

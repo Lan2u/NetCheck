@@ -1,22 +1,41 @@
+# Library imports
+import threading
+import time
+
+# Imports from this program
 import netConn as nc
 import error
 from error import ConnectionFailedError
 
-def main():
-    print("Starting...")
-    net = nc.create_from_file("config.json")
-
+def update_net_state(net):
     try:
         net.ping_all()
     except error.Error:
-        print("Failed to ping all")
-        exit(0)
+        print("Local networking ping failure")
+
+class NetUpdateThread (threading.Thread):
+    def __init__(self, net, update_period=1):
+        threading.Thread.__init__(self)
+        self.net = net
+        self.update_period = update_period
+        self.running = True;
+
+    def run(self):
+        while self.running:
+            update_net_state(self.net)
+            time.sleep(self.update_period)
     
-    time_since = net.last_successful_contact("Google DNS")
-    if time_since != None:
-        print("Last successful contact elapsed: {:02.2f} secs".format(time_since.total_seconds()))
-    else:
-        print("Last successful contact elapsed: {secs} secs".format(secs=None))
+    def stop(self):
+        self.running = False;
+
+def main():
+    print("Starting...")
+    net = nc.create_from_file("config.json")
+    update_thread = NetUpdateThread(net)
+    update_thread.start()
+    time.sleep(5)
+    update_thread.stop()
+    update_thread.join()
 
 if __name__ == "__main__" :
     main()
