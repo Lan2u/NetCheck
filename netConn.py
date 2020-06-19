@@ -30,6 +30,14 @@ def config_from_file(path):
 
     return config
 
+class HostStatus:
+    def __init__(self, name, addr, elapsed, last_loss, avg_rtt):
+        self.name = name
+        self.addr = addr
+        self.elapsed = elapsed.total_seconds()
+        self.last_loss = last_loss
+        self.avg_rtt = avg_rtt
+
 class Host:
     def __init__ (self, address = "127.0.0.1", name="default"):
         self.name = name
@@ -46,6 +54,13 @@ class Host:
             return None
         return datetime.now() - self.last_ping_timestamp
 
+    def gen_host_status(self):
+        name = self.name
+        addr = self.addr
+        elapsed = self.elapsed_since_last_successful_contact()
+        last_loss = self.last_ping.packet_loss
+        return HostStatus(name, addr, elapsed, last_loss, self.last_ping.avg_rtt)
+
 def host_from_str(host_cfg):
     host = Host()
     host.name = host_cfg['name']
@@ -53,12 +68,16 @@ def host_from_str(host_cfg):
     return host
 
 class NetConn:
-    def __init__ (self):
+    def __init__ (self, name):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock = sock
         self.hosts = {}
         self.lock = threading.Lock()
-    
+        self.name = name
+
+    def get_name(self):
+        return self.name
+
     def _ping_host(self, host):
         try:
             res = ping(host.addr, count=PING_COUNT, interval=0.2)
@@ -70,6 +89,7 @@ class NetConn:
         host = self.hosts[host_name]
         self._ping_host(host)
 
+    # Thread-safe.
     def ping_all(self):
         self.lock.acquire()
         for host in self.hosts.values():
@@ -84,11 +104,19 @@ class NetConn:
 
     def last_successful_contact(self, host_name):
         return self.hosts[host_name].elapsed_since_last_successful_contact()
+
+    # Thread-safe.
+    def get_status(self):
+        self.lock.acquire()
+        status = []
+        for host in self.hosts.values():
+            status.append(host.gen_host_status().__dict__)
+        self.lock.release()
+        return status
     
 
 def create_from_config(config):
-    nc = NetConn()
-    nc.name = config.self_name
+    nc = NetConn(config.self_name)
     nc.hosts = config.hosts
     return nc
 

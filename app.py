@@ -1,11 +1,23 @@
-# Library imports
+# Std Library imports
 import threading
 import time
+import os
+
+# Imports from external libraries
+from flask import Flask, render_template, jsonify
 
 # Imports from this program
 import netConn as nc
 import error
 from error import ConnectionFailedError
+
+app = Flask(__name__)
+
+net = None
+
+INDEX_TEMPLATE_PATH = "index.html"
+
+# INDEX_TEMPLATE_PATH = os.path.join("templates", "index.html")
 
 def update_net_state(net):
     try:
@@ -18,7 +30,7 @@ class NetUpdateThread (threading.Thread):
         threading.Thread.__init__(self)
         self.net = net
         self.update_period = update_period
-        self.running = True;
+        self.running = True
 
     def run(self):
         while self.running:
@@ -26,16 +38,23 @@ class NetUpdateThread (threading.Thread):
             time.sleep(self.update_period)
     
     def stop(self):
-        self.running = False;
+        self.running = False
 
-def main():
+@app.route('/host_status', methods=['GET'])
+def get_status():
+    return jsonify(net.get_status())
+
+@app.route('/', methods=['GET'])
+def index():
+    return render_template(INDEX_TEMPLATE_PATH, name=net.get_name())
+
+@app.before_first_request
+def startup():
     print("Starting...")
+    global net
     net = nc.create_from_file("config.json")
     update_thread = NetUpdateThread(net)
     update_thread.start()
-    time.sleep(5)
-    update_thread.stop()
-    update_thread.join()
 
 if __name__ == "__main__" :
-    main()
+    app.run()
