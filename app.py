@@ -2,6 +2,7 @@
 import threading
 import time
 import os
+import webbrowser
 
 # Imports from external libraries
 from flask import Flask, render_template, jsonify
@@ -48,7 +49,6 @@ def get_status():
 def index():
     return render_template(INDEX_TEMPLATE_PATH, name=net.get_name())
 
-@app.before_first_request
 def startup():
     print("Starting...")
     global net
@@ -57,4 +57,6 @@ def startup():
     update_thread.start()
 
 if __name__ == "__main__" :
-    app.run()
+    webbrowser.open("http://localhost:16780/", 2)
+    startup()
+    app.run(port=16780)
