@@ -1,0 +1,17 @@
+.ok_status {
+    background-color: green;
+}
+
+.lossy_status {
+    background-color: red;
+}
+
+.status_row {
+    font-size: 16;
+    font-family: Arial, Helvetica, sans-serif;
+    height: 50%;
+}
+
+.status_table {
+    height: 80%;
+}
