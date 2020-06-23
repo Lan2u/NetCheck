@@ -5,7 +5,7 @@ import os
 import webbrowser
 
 # Imports from external libraries
-from flask import Flask, render_template, jsonify
+from flask import Flask, render_template, jsonify, request
 
 # Imports from this program
 import netConn as nc
@@ -15,6 +15,8 @@ from error import ConnectionFailedError
 app = Flask(__name__)
 
 net = None
+
+update_thread = None
 
 INDEX_TEMPLATE_PATH = "index.html"
 
@@ -49,10 +51,29 @@ def get_status():
 def index():
     return render_template(INDEX_TEMPLATE_PATH, name=net.get_name())
 
+
+def shutdown_server():
+    func = request.environ.get('werkzeug.server.shutdown')
+    if func is None:
+        raise RuntimeError('Not running with the Werkzeug Server')
+    func()
+
+# Server shutdown, to make this as easy as possible this is done as a /shutdown route.
+# This is obviously not an ideal solution because if you leave the localhost/shutdown page open
+# then you won't be able to start the server as chrome auto-refresh will trigger the shutdown immediately.
+@app.route('/shutdown', methods=['GET'])
+def shutdown():
+    shutdown_server()
+    update_thread.stop()
+    update_thread.join()
+    exit(0)
+    return 'Server shutting down...'
+
 def startup():
     print("Starting...")
     global net
     net = nc.create_from_file("config.json")
+    global update_thread
     update_thread = NetUpdateThread(net)
     update_thread.start()
 
